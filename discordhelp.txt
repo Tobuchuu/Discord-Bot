@@ -1,0 +1,6 @@
+Tobu's Help Board
+**Currency commands:**
+`help`: Show this help message
+`daily`: get daily
+`bal`: check how many dollers you got m8
+`steal`: y u criminal
