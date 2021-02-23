@@ -1,1 +1,2 @@
-coins = 90
+coins = 130
+dailyTimer = 1614078720.3575714
