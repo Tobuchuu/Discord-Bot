@@ -47,6 +47,15 @@ def ReadValueInSave(userID,valueName):
         return save[valueName]
     except:
         return None
+def DeleteValueInSave(userID,valueName):
+    MakeSureSaveExists(userID)
+    save = ReadSaveFile(userID)
+    newSave = {}
+    for key in save:
+        if key in valueName:
+            continue
+        newSave[key] = save[key]
+    UpdateSaveFile(userID,newSave)
 def AddUserCoins(userID,value):
     MakeSureSaveExists(userID)
     save = ReadSaveFile(userID)
@@ -57,12 +66,20 @@ def RemoveUserCoins(userID,value):
         value = value * -1
     AddUserCoins(userID,value)
 
-
 #Message event
 @client.event
 async def on_message(message):
     #If message is from bot: Ignore
     if message.author == client.user:return
+
+    messageSenderID = message.author.id
+    messageSenderName = message.author.name
+    try:
+        messageMentionedID = message.mentions[0].id
+        messageMentionedName = (await client.fetch_user(messageMentionedID)).name
+    except:
+        messageMentionedID,messageMentionedName = None,None
+    
     
     try:
         #If the message starts with the bot call command:
@@ -74,14 +91,6 @@ async def on_message(message):
             #CommandRest contains the rest (after removing command and commandshort)
             commandRest = command.split(" ")[1:]
             
-            messageSenderID = message.author.id
-            messageSenderName = message.author.name
-            try:
-                messageMentionedID = message.mentions[0].id
-                messageMentionedName = (await client.fetch_user(messageMentionedID)).name
-            except:
-                messageMentionedID,messageMentionedName = None,None
-
             # Command list
             if commandShort == "help":
                 # First line of textfile will be the title, and the rest will be the description
@@ -219,11 +228,81 @@ async def on_message(message):
                         await message.channel.send(f"You do not have {bet} {'coin'if bet==1 else'coins'}!")
                 except:
                     await message.channel.send("You have to specify how much you want to bet!")
+            elif commandShort in ("guess.the.number", "guessnum"):
+                if ReadValueInSave(messageSenderID,'gameRunning') == "1":
+                    return
+                ChangeValueInSave(messageSenderID,{'gameRunning':"1"})
+                ChangeValueInSave(messageSenderID,{'game_tries':3})
+                ChangeValueInSave(messageSenderID,{'game_randomNumber':random.randint(0,100)})
+                ChangeValueInSave(messageSenderID,{'game_timer':time.time()})
+                await message.channel.send("Guess a number between 0 to 100! You have 3 tries and a timer of 1 minute")
+                print(ReadValueInSave(messageSenderID,'game_randomNumber'))
+                #while (player.message.content != randomNumber and tries != 0 and time.time()-float(timer) > 60):
+
 
             else:return
+            return
+
+        if ReadValueInSave(messageSenderID,'gameRunning') == "1":
+            def CleanUpAfterGameOver():
+                DeleteValueInSave(messageSenderID,('gameRunning','game_tries', 'game_randomNumber', 'game_timer'))
+
+            if time.time() - float(ReadValueInSave(messageSenderID,'game_timer')) < 60:
+                if message.content == ReadValueInSave(messageSenderID,'game_randomNumber'):
+                    await message.channel.send("You are win! The number was **" + ReadValueInSave(messageSenderID,'game_randomNumber') + "**\nYou earned 30 coins.")
+                    CleanUpAfterGameOver()
+                    AddUserCoins(messageSenderID, 30)
+                else:
+                    triesLeft = int(ReadValueInSave(messageSenderID,'game_tries')) - 1
+                    if triesLeft == 0:
+                        await message.channel.send("You used up all your tries.")
+                        await message.channel.send("The number was **" + ReadValueInSave(messageSenderID,'game_randomNumber') + "**")
+                        CleanUpAfterGameOver()
+                    else:
+                        if message.content > ReadValueInSave(messageSenderID,'game_randomNumber'):
+                            await message.channel.send("You guessed too high.")
+                        else:
+                            await message.channel.send("You guessed too low.")
+                        await message.channel.send(f"You have {triesLeft} tries left.")
+                        ChangeValueInSave(messageSenderID,{'game_tries':triesLeft})
+            else:
+                await message.channel.send("The number was **" + ReadValueInSave(messageSenderID,'game_randomNumber') + "**")
+                await message.channel.send("Time's is up!")
+                CleanUpAfterGameOver()
+                
 
     except Exception as e:
         print("ERROR",e);return
+
+
+
+
+# @client.event
+# async def on_raw_reaction_add(payload):
+#     channelID = 813489688006492271
+#     guildID = payload.guild_id
+#     if payload.message.author != client.user:
+#         return
+#     else:
+#         print(payload.emoji.name)
+    
+#     if payload.emoji.name == '☃️':
+#         print("gay")
+#     elif payload.emoji.name == '😳':
+#         print("gay2")
+#     elif payload.emoji.name == '😎':
+#         print("gay3")
+
+    
+        
+
+# @client.event
+# async def on_raw_reaction_remove(payload):
+#     print("reaction was removed")
+
+
+
+
 
 #On Load event
 @client.event

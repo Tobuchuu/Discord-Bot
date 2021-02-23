@@ -1,2 +1,1 @@
-coins = 10
-dailyTimer = 1613995389.689154
+coins = 90
