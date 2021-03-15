@@ -243,7 +243,7 @@ async def on_message(message):
             elif commandShort == "echo":
                 message = await message.channel.send(" ".join(commandRest))
                 await message.channel.send(message.id)
-
+                
             else:return
             return
 
@@ -251,32 +251,32 @@ async def on_message(message):
             def CleanUpAfterGameOver():
                 DeleteValueInSave(messageSenderID,('gameRunning','game_tries', 'game_randomNumber', 'game_timer'))
 
-            try:
-                int(message.content)
-                if time.time() - float(ReadValueInSave(messageSenderID,'game_timer')) < 60:
-                    if message.content == ReadValueInSave(messageSenderID,'game_randomNumber'):
-                        await message.channel.send("You are win! The number was **" + ReadValueInSave(messageSenderID,'game_randomNumber') + "**\nYou earned 30 coins.")
-                        CleanUpAfterGameOver()
-                        AddUserCoins(messageSenderID, 30)
-                    else:
-                        triesLeft = int(ReadValueInSave(messageSenderID,'game_tries')) - 1
-                        if triesLeft == 0:
-                            await message.channel.send("You used up all your tries.")
-                            await message.channel.send("The number was **" + ReadValueInSave(messageSenderID,'game_randomNumber') + "**")
-                            CleanUpAfterGameOver()
-                        else:
-                            if message.content > ReadValueInSave(messageSenderID,'game_randomNumber'):
-                                await message.channel.send("You guessed too high.")
-                            else:
-                                await message.channel.send("You guessed too low.")
-                            await message.channel.send(f"You have {triesLeft} tries left.")
-                            ChangeValueInSave(messageSenderID,{'game_tries':triesLeft})
-                else:
-                    await message.channel.send("The number was **" + ReadValueInSave(messageSenderID,'game_randomNumber') + "**")
-                    await message.channel.send("Time's is up!")
+        try:
+            int(message.content)
+            if time.time() - float(ReadValueInSave(messageSenderID,'game_timer')) < 60:
+                if message.content == ReadValueInSave(messageSenderID,'game_randomNumber'):
+                    await message.channel.send("You are win! The number was **" + ReadValueInSave(messageSenderID,'game_randomNumber') + "**\nYou earned 30 coins.")
                     CleanUpAfterGameOver()
-            except:
-                pass                
+                    AddUserCoins(messageSenderID, 30)
+                else:
+                    triesLeft = int(ReadValueInSave(messageSenderID,'game_tries')) - 1
+                    if triesLeft == 0:
+                        await message.channel.send("You used up all your tries.")
+                        await message.channel.send("The number was **" + ReadValueInSave(messageSenderID,'game_randomNumber') + "**")
+                        CleanUpAfterGameOver()
+                    else:
+                        if message.content > ReadValueInSave(messageSenderID,'game_randomNumber'):
+                            await message.channel.send("You guessed too high.")
+                        else:
+                            await message.channel.send("You guessed too low.")
+                        await message.channel.send(f"You have {triesLeft} tries left.")
+                        ChangeValueInSave(messageSenderID,{'game_tries':triesLeft})
+            else:
+                await message.channel.send("The number was **" + ReadValueInSave(messageSenderID,'game_randomNumber') + "**")
+                await message.channel.send("Time's is up!")
+                CleanUpAfterGameOver()
+        except:
+            pass 
 
     except Exception as e:
         print("ERROR",e);return
