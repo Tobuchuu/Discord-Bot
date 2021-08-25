@@ -5,6 +5,8 @@ import random
 import discord
 import logging
 
+from discord.activity import Streaming
+
 logging.basicConfig(format='%(asctime)s %(levelname)-8s %(message)s',level=logging.INFO,datefmt='%Y-%m-%d %H:%M:%S')
 
 #Init
@@ -132,7 +134,7 @@ async def on_message(message):
                         await message.channel.send(f"{(await client.fetch_user(theId)).name} has never claimed their daily!")
                 # If not, then it will instaed attempt to claim your daily
                 except:
-                    daily = 10
+                    daily = random.randint(10,100)
 
                     # Loads the timestamp saved in 'dailyTimer'
                     lastTimeDailyClaimed = ReadValueInSave(message.author.id,'dailyTimer')
@@ -159,13 +161,17 @@ async def on_message(message):
             elif commandShort == "steal":
                 personToStealFromID = message.mentions[0].id
 
-                theirCoins = ReadValueInSave(personToStealFromID,'coins')
-                if theirCoins == 0:
+                if personToStealFromID == messageSenderID:
+                    await message.channel.send("Why are you trying to steal from yourself dumbass?")
+                    return
+
+                theirCoins = int(ReadValueInSave(personToStealFromID,'coins'))
+                if theirCoins <= 17:
                     await message.channel.send("bro they broke af, cant steal from them")
                     return
 
                 minStealLimit = 5
-                maxStealLimit = round(ReadValueInSave(personToStealFromID,'coins') * 0.3)
+                maxStealLimit = round(float(ReadValueInSave(personToStealFromID,'coins')) * 0.3)
 
                 if theirCoins < minStealLimit:
                     minStealLimit = theirCoins
@@ -175,23 +181,23 @@ async def on_message(message):
 
                 stolenAmmount = random.randint(minStealLimit,maxStealLimit)
 
-                RemoveUserCoins(personToStealFromID,stolenAmmount)
-                AddUserCoins(message.author.id,stolenAmmount)
+                if random.randint(0,10) >= 4:
+                    RemoveUserCoins(personToStealFromID,stolenAmmount)
+                    AddUserCoins(message.author.id,stolenAmmount)
 
-                stealName = (await client.fetch_user(personToStealFromID)).name
-                stealerName = message.author.name
+                    stealName = (await client.fetch_user(personToStealFromID)).name
+                    stealerName = message.author.name
 
-                await message.channel.send(f"{stealerName} stole {stolenAmmount} coins from {stealName}!")
-                # if random.randint(0,10) <= 3:
+                    await message.channel.send(f"{stealerName} stole {stolenAmmount} coins from {stealName}!")
+                else:
+                    RemoveUserCoins(message.author.id,stolenAmmount)
+                    AddUserCoins(personToStealFromID,stolenAmmount)
 
-                #     RemoveUserCoins(message.author.id,stolenAmmount)
-                #     AddUserCoins(personToStealFromID,stolenAmmount)
+                    stealName = message.author.name
+                    stealerName = (await client.fetch_user(personToStealFromID)).name
 
-                #     stealName = message.author.name
-                #     stealerName = (await client.fetch_user(personToStealFromID)).name
+                    await message.channel.send(f"**{stealName}** tried to steal **{stolenAmmount} coins** from **{stealerName}** but got caught in 4K :scream:. Now they have to pay **{stealerName} {stolenAmmount} coins** instead!")
 
-                #     await message.channel.send(f"{stealName} tried to steal {stolenAmmount} coins from {stealerName}, but they failed, and {stealerName} ended up stealing {stolenAmmount} coins from {stealName} instead!")
-                # else:
             elif commandShort in ("transfer","trans","send"):
                 try:
                     if messageMentionedID != None:
@@ -314,6 +320,7 @@ async def on_message(message):
 #On Load event
 @client.event
 async def on_ready(): 
+    await client.change_presence(activity=discord.Activity(type=discord.ActivityType.streaming, name="yo mama clap them cheeks", url="https://www.youtube.com/watch?v=dQw4w9WgXcQ"))
     logging.info(f'Logged in as {client.user.name}\n{client.user.id}\n')
 
 #Main
