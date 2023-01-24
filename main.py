@@ -298,13 +298,6 @@ async def on_message(message):
 #         return
 #     else:
 #         print(payload.emoji.name)
-    
-#     if payload.emoji.name == '☃️':
-#         print("gay")
-#     elif payload.emoji.name == '😳':
-#         print("gay2")
-#     elif payload.emoji.name == '😎':
-#         print("gay3")
 
     
         
