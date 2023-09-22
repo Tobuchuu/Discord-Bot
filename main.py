@@ -4,6 +4,8 @@ import os
 import random
 import discord
 import logging
+import re
+import json
 
 from discord.activity import Streaming
 
@@ -12,10 +14,14 @@ logging.basicConfig(format='%(asctime)s %(levelname)-8s %(message)s',level=loggi
 #Init
 with open("token.txt","r+") as f:
     TOKEN = f.readlines()[0].strip("\n")
-botCallCommand = "!tobu "
-client = discord.Client() 
+botCallCommand = "!tim "
 
-#Functions
+intents = discord.Intents.all()
+intents.message_content = True
+
+client = discord.Client(intents=intents) 
+
+# region - Functions
 def MakeSureSaveExists(userID):
     fileExists = os.path.isfile(f"save/{str(userID)}.txt")
     if not fileExists:
@@ -68,6 +74,8 @@ def RemoveUserCoins(userID,value):
         value = value * -1
     AddUserCoins(userID,value)
 
+# endregion
+
 #Message event
 @client.event
 async def on_message(message):
@@ -103,12 +111,12 @@ async def on_message(message):
 
                 # Gets the current guild, guild icon url and guild name
                 currentGuild = client.get_guild(message.guild.id)
-                serverIconURL = str(currentGuild.icon_url)
+                serverIconURL = str(currentGuild.icon)
                 serverName = currentGuild.name
                 
                 #Creates embed object
                 embed = discord.Embed(
-                    color=discord.Colour.from_rgb(154, 0, 255),
+                    color=discord.Colour.from_rgb(203, 15, 15),
                     title=title,
                     description=description
                 )
@@ -118,6 +126,8 @@ async def on_message(message):
                     icon_url=serverIconURL
                 )
                 await message.channel.send(embed=embed)
+            
+            #--------------------------------coin system---------------------------
             elif commandShort == "daily":
                 # If message contains mentions, then it will instead only report how much time that person has left on their daily timer
                 try:
@@ -196,7 +206,7 @@ async def on_message(message):
                     stealName = message.author.name
                     stealerName = (await client.fetch_user(personToStealFromID)).name
 
-                    await message.channel.send(f"**{stealName}** tried to steal **{stolenAmmount} coins** from **{stealerName}** but got caught in 4K :scream:. Now they have to pay **{stealerName} {stolenAmmount} coins** instead!")
+                    await message.channel.send(f"**{stealName}** tried to steal **{stolenAmmount} coins** from **{stealerName}** but got caught in 4K 📷. Now they have to pay **{stealerName} {stolenAmmount} coins** instead!")
 
             elif commandShort in ("transfer","trans","send"):
                 try:
@@ -289,35 +299,154 @@ async def on_message(message):
 
 
 
+# region - Self roles
+class ReactionSaveFile:
+    def __init__(self, guild_id) -> None:
+        self.guild_id = guild_id
+        self.__fn = f"data/{self.guild_id}.json"
 
-# @client.event
-# async def on_raw_reaction_add(payload):
-#     channelID = 813489688006492271
-#     guildID = payload.guild_id
-#     if payload.message.author != client.user:
-#         return
-#     else:
-#         print(payload.emoji.name)
-
+    def _load(self):
+        if os.path.isfile(self.__fn):
+            with open(self.__fn , "r", encoding="utf-8") as f:
+                self.__guild_data = json.load(f)
+        else:
+            self.__guild_data = {
+                "message_ids": [],
+                "roles": {}
+            }
     
+    def _save(self):
+        with open(self.__fn , "w", encoding="utf-8") as f:
+            json.dump(self.__guild_data, f,  ensure_ascii=False, indent=4)
+    
+    def add_message_id(self, message_id):
+        self._load()
+        if not message_id in self.__guild_data["message_ids"]:
+            self.__guild_data["message_ids"].append(int(message_id))
+        self._save()
+    def remove_message_id(self, message_id):
+        self._load()
+        self.__guild_data["message_ids"] = [x for x in self.__guild_data["message_ids"] if x != int(message_id)]
+        self._save()
+
+    def add_role(self, emoji, role_name, description=None):
+        self._load()
+        self.__guild_data["roles"][emoji] = {"role_name": role_name, "description": description}
+        self._save()
+    def remove_role(self, emoji):
+        self._load()
+        if emoji in self.__guild_data["roles"]:
+            del self.__guild_data["roles"][emoji]
+        self._save()
+
+    def get_guild_data(self):
+        self._load()
+        return self.__guild_data
+
+
+async def get_reaction_from_payload(payload, action):
+    message_id = payload.message_id
+    guild_id = payload.guild_id
+
+    guild_data = ReactionSaveFile(guild_id).get_guild_data()
+
+    if message_id in guild_data["message_ids"]:
+        guild = discord.utils.find(lambda g : g.id == guild_id, client.guilds)
+
+        if payload.emoji.name in guild_data["roles"]:
+            role = discord.utils.get(guild.roles, name=guild_data["roles"][payload.emoji.name]["role_name"])
+        else:
+            role = discord.utils.get(guild.roles, name=payload.emoji.name)
+
+        if role is not None:
+            member = discord.utils.find(lambda m : m.id == payload.user_id, guild.members)
+            if member is not None:
+                if action == "+":
+                    await member.add_roles(role)  
+                elif action == "-":
+                    await member.remove_roles(role)
+
+@client.event
+async def on_raw_reaction_add(payload):
+    try:
+        if payload.member == client.user:return
+    except:pass
+    await get_reaction_from_payload(payload, "+")
+
+@client.event
+async def on_raw_reaction_remove(payload):
+    try:
+        if payload.member == client.user:return
+    except:pass
+    await get_reaction_from_payload(payload, "-")
+# endregion
+
+
+@client.event
+async def on_message(payload):
+    if payload.author == client.user:return
+
+    guild_id = payload.guild.id
+    role_handler = ReactionSaveFile(guild_id)
+
+    regex_template = f"{re.escape(botCallCommand)}[^ ]* "
+    
+    if payload.content.lower() == botCallCommand+"display":
+        roles = role_handler.get_guild_data()["roles"]
+        msg = ""
+        for role in roles:
+            msg += role + " : `"+roles[role]["role_name"]+ "`"
+            if roles[role]["description"] != None:
+                msg += " - "+roles[role]["description"] 
+            msg += "\n"
+
+        # Gets the current guild, guild icon url and guild name
+        currentGuild = client.get_guild(payload.guild.id)
+        serverIconURL = str(currentGuild.icon)
+        serverName = currentGuild.name
         
-
-# @client.event
-# async def on_raw_reaction_remove(payload):
-#     print("reaction was removed")
-
-
-
-
+        #Creates embed object
+        embed = discord.Embed(
+            color=discord.Colour.from_rgb(203, 15, 15),
+            title="Role Menu: React to give yourself a role.",
+            description=msg
+        )
+        #Adds server name and icon
+        embed.set_author(
+            name=serverName,
+            icon_url=serverIconURL
+        )
+        r = await payload.channel.send(embed=embed)
+        role_handler.add_message_id(r.id)
+        for x in roles:
+            try:
+                # TODO make the stupid robot send the correct emoji and shit from custom emojis yes
+                # i dunno man just find a fucntion that does the thing and work and 
+                # Make it work with Custom emojis 
+                # I love you baby
+       
+                await r.add_reaction(x)
+            except:
+                pass
+    elif payload.content.lower().startswith(botCallCommand+"add"):
+        response = re.findall(regex_template+'([^ "]*) "([^"]*)"(?: "([^"]*)")?', payload.content)
+        if len(response) > 0:
+            response = response[0]
+            role_handler.add_role(emoji=response[0], role_name=response[1], description=response[2])
+    elif payload.content.lower().startswith(botCallCommand+"remove"):
+        response = re.findall(regex_template+'([^ "]*)', payload.content)
+        if len(response) > 0:
+            role_handler.remove_role(emoji=response[0])
 
 #On Load event
 @client.event
 async def on_ready(): 
-    await client.change_presence(activity=discord.Activity(type=discord.ActivityType.streaming, name="yo mama clap them cheeks", url="https://www.youtube.com/watch?v=dQw4w9WgXcQ"))
-    logging.info(f'Logged in as {client.user.name}\n{client.user.id}\n')
+    await client.change_presence(activity=discord.Activity(type=discord.ActivityType.streaming, name="!tim help", url="https://www.youtube.com/watch?v=dQw4w9WgXcQ"))
+    logging.info(f'Logged in as {client.user.name}\t{client.user.id}\n')
 
 #Main
 if __name__ == "__main__":
+    if not os.path.exists("./data/"): os.mkdir("data")
     client.run(TOKEN)
 else:
     print("Please run me as Main!")

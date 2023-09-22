@@ -1,12 +1,12 @@
-Tobu's Help Board
-**Currency commands:**
-`help`: Show this help message
-`daily`: Using this command lets you earn a daily reward, may multiply if you keep the streak.
-*@ a user to check their daily countdown*
-`bal`, `balance`, `coin`: Using this command lets you see your amount of currency.
-*@ a user to check their balance*
-`steal`: Using this command lets you steal a users currency.
-
-**Game commands:**
-`coinflip`: Using this command lets you flip a coin and if it's in your favour, you'll earn double your bet.
-`guess.the.number`, `guessnum`: Using this command starts a guessing game.
+Tim's Help Board
+### **Common commands:**
+- `help`: Show this help message
+### **Currency commands:**
+- `daily`: Using this command lets you earn a daily reward, may multiply if you keep the streak. 
+    *@ a user in the end to check their daily countdown*
+- `bal`, `balance`, `coin`: Using this command lets you see your amount of currency. 
+    *@ a user in the end to check their balance*
+- `steal`: Using this command lets you steal a users currency.
+### **Game commands:**
+- `coinflip`: Using this command lets you flip a coin and if it's in your favour, you'll earn double your bet.
+- `guess.the.number`, `guessnum`: Using this command starts a guessing game.
